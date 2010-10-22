@@ -41,6 +41,16 @@ The following code initializes the library and sends off a quick test messsage:
 	$exchangeclient->init("mailbox_username", "mailbox_password");
 	$exchangeclient->send_message("you@otherdomain.com", "Subject", "A test message");
 
+
+CodeIgniter
+----------
+This code is compatible with CodeIgntier. To use, just drop the Exchangeclient.php file (as well as the 3 SOAP definition files from the installation instructions) into your "application/libraries" folder. Then use:
+
+	$this->load->library("Exchangeclient");
+	$this->exchangeclient->init("mailbox_username", "mailbox_password");
+	etc...
+
+
 License
 -------
 
