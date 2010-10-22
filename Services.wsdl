@@ -1010,7 +1010,7 @@
   
 <wsdl:service name="ExchangeServices">
 		<wsdl:port name="ExchangeServicePort" binding="tns:ExchangeServiceBinding">
-			<soap:address location="http://exch.heartspring.org/EWS/Exchange.asmx"/>
+			<soap:address location="http://exchange.server.local/EWS/Exchange.asmx"/>
 		</wsdl:port>
 	</wsdl:service>
 </wsdl:definitions>
