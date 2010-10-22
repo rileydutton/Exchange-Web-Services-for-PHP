@@ -1,5 +1,5 @@
 Exchange Web Services for PHP
-=========
+=============================
 
 This is a basic library that abstracts a few of common operations using the Exchange Web Services API present on Exchange Server 2007. It is based in large part on this article:
 
@@ -7,7 +7,8 @@ http://www.howtoforge.com/talking-soap-with-exchange
 
 Right now only basic operations are supported (getting a list of all email from a user's inbox, and sending a message), but as time goes on hopefully more funtionality will be added.
 
-==INSTALLATION==
+Installation
+------------
 
 Installation is a bit more complicated than I'd like, but most of that is due to the way the API is set up.
 
@@ -21,7 +22,7 @@ Download those three files, and place them in the same directory as the "Exchang
 
 Finally, open up the Services.wsdl file in a TEXT EDITOR (do not use a Word Processor like MS Word), and at the very bottom of the file, before the final </wsdl:definitions> tag, add the following:
 
-<wsdl:service name="ExchangeServices">
+	<wsdl:service name="ExchangeServices">
 		<wsdl:port name="ExchangeServicePort" binding="tns:ExchangeServiceBinding">
 			<soap:address location="http://exchange.server.local/EWS/Exchange.asmx"/>
 		</wsdl:port>
@@ -31,7 +32,8 @@ Be sure to replace the exchange.server.local with your actual exchange server ad
 
 That's it! You should now be ready to use the library. Just include it in your PHP script, and you're off. 
 
-==EXAMPLE CODE==
+Example
+-------
 
 The following code initializes the library and sends off a quick test messsage:
 
