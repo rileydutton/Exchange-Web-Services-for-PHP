@@ -1,0 +1,10 @@
+Exchange Web Services for PHP
+=========
+
+This is a basic library that abstracts a few of common operations using the Exchange Web Services API present on Exchange Server 2007. It is based in large part on this article:
+
+http://www.howtoforge.com/talking-soap-with-exchange
+
+Right now only basic operations are supported (getting a list of all email from a user's inbox, and sending a message), but as time goes on hopefully more funtionality will be added.
+
+My code from this project is licensed under the MIT License (see the included LICENSE file for more information). However, for convenience, I have included the SOAP definition files from an Exchange Server -- these files are most definitely not open source, and I may at some point receive a takedown request for them. However, the are available on your Exchange Server, so anyone who is using this library would (presumably) have a license to use these files as well.
