@@ -8,6 +8,19 @@ Right now only basic operations are supported (getting a list of all email from 
 Installation
 ------------
 
+**Basic Installation**
+
+You can give this a shot, but it doesn't work for me on my Exchange server. If it doesn't work for you, don't panic, just see the "Advanced Installation" section below.
+
+The basic installation is basically just to tell the ExchangeClient to look on the Exchange Server itself for the SOAP files. You would do so during initialization, like so:
+
+	$exchangeclient = new Exchangeclient();
+	$exchangeclient->init("mailbox_username", "mailbox_password", NULL, "http://exchange.server.local/EWS/Services.wsdl");
+
+If that works for you, great. If not, then you had the same problem as me, see the Advanced section below.
+
+**Advanced Installation**
+
 Installation is a bit more complicated than I'd like, but most of that is due to the way the API is set up.
 
 The first thing you must do is download the SOAP files from your Exchange server. Those files are located here (be sure to replace "exchange.server.local" with the address of the Exchange server on your network):
