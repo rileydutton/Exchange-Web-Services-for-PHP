@@ -23,10 +23,10 @@ class Exchangeclient {
 	 * Initialize the class. This could be better as a __construct, but for CodeIgniter compatibility we keep it separate.
 	 * 
 	 * @access public
-	 * @param string $user the username of the mailbox account you want to use on the Exchange server
-	 * @param string $pass the password of the account
-	 * @param string $impersonate the email address of someone you want to impoersonate on the server [NOTE: Your server must have Impersonation enabled (most don't) and you're account must have impersonation permissions (most don't), otherwise this will cause everything to fail! If you don't know what it is, leave it alone :-) (default: NULL)
-	 * @param string $wsdl The path to the WSDL file. If you put them in the same directory as the Exchangeclient.php script, you can leave this alone (default: "Services.wsdl")
+	 * @param string $user (the username of the mailbox account you want to use on the Exchange server)
+	 * @param string $pass (the password of the account)
+	 * @param string $impersonate. (the email address of someone you want to impoersonate on the server [NOTE: Your server must have Impersonation enabled (most don't) and you're account must have impersonation permissions (most don't), otherwise this will cause everything to fail! If you don't know what it is, leave it alone :-)] default: NULL)
+	 * @param string $wsdl. (The path to the WSDL file. If you put them in the same directory as the Exchangeclient.php script, you can leave this alone. default: "Services.wsdl")
 	 * @return void
 	 */
 	function init($user, $pass, $impersonate=NULL, $wsdl="Services.wsdl") {
@@ -45,11 +45,11 @@ class Exchangeclient {
     * 
     * @access public
     * @param string $subject
-    * @param string $start start time of event in ISO date format e.g. "2010-09-21T16:00:00Z"
-    * @param string $end ISO date format
+    * @param string $start (start time of event in ISO date format e.g. "2010-09-21T16:00:00Z"
+    * @param string $end (ISO date format)
     * @param string $location
     * @param bool $isallday. (default: false)
-    * @return bool $success true if the message was created, false if there was an error
+    * @return bool $success (true if the message was created, false if there was an error)
     */
    function create_event($subject, $start, $end, $location, $isallday=false) {
 		
@@ -81,10 +81,10 @@ class Exchangeclient {
 	 * Get the messages for a mailbox.
 	 * 
 	 * @access public
-	 * @param int $limit How many messages to get? (default: 50)
-	 * @param bool $onlyunread Only get unread messages? (default: false)
-	 * @param string $folder other options include "sentitems", this must be a DistinguishedFolderId (default: "inbox")
-	 * @return array $messages an array of objects representing the messages
+	 * @param int $limit. (How many messages to get? default: 50)
+	 * @param bool $onlyunread. (Only get unread messages? default: false)
+	 * @param string $folder. (default: "inbox", other options include "sentitems", this must be a DistinguishedFolderId)
+	 * @return array $messages (an array of objects representing the messages)
 	 */
 	function get_messages($limit=50, $onlyunread=false, $folder="inbox") {
 		
@@ -150,10 +150,10 @@ class Exchangeclient {
 	 * @param string $to (the email address to send the message to)
 	 * @param string $subject
 	 * @param string $content
-	 * @param string $bodytype (default: "Text", "HTML" for HTML emails)
-	 * @param bool $saveinsent Save in the user's sent folder after sending? (default: true)
-	 * @param bool $markasread Mark as read after sending? This currently does nothing. (default: true)
-	 * @return bool $success True if the message was sent, false if there was an error.
+	 * @param string $bodytype. (default: "Text", "HTML" for HTML emails)
+	 * @param bool $saveinsent. (Save in the user's sent folder after sending? default: true)
+	 * @param bool $markasread. (Mark as read after sending? This currently does nothing. default: true)
+	 * @return bool $success. (True if the message was sent, false if there was an error).
 	 */
 	function send_message($to, $subject, $content, $bodytype="Text", $saveinsent=true, $markasread=true) {
 		$this->setup();
@@ -191,9 +191,9 @@ class Exchangeclient {
 	 * Deletes a message in the mailbox of the current user.
 	 * 
 	 * @access public
-	 * @param ItemId $ItemId such as one returned by get_messages
+	 * @param ItemId $ItemId (such as one returned by get_messages)
 	 * @param string $deletetype. (default: "HardDelete")
-	 * @return bool $success true: message was deleted, false: message failed to delete
+	 * @return bool $success (true: message was deleted, false: message failed to delete)
 	 */
 	function delete_message($ItemId, $deletetype="HardDelete") {
 		$this->setup();
