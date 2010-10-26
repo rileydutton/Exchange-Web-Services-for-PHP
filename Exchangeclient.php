@@ -1,8 +1,8 @@
 <?php
 /**
  * Exchangeclient class.
- * 
- * @param $lastError (the last error encountered, if any, while interacting with the Exchange server)
+ *
+ * @author Riley Dutton
  */
 class Exchangeclient {  
 
@@ -10,6 +10,12 @@ class Exchangeclient {
 	private $client;
 	private $user;
 	private $pass;
+	/**
+	 * The last error that occurred when communicating with the Exchange server.
+	 * 
+	 * @var mixed
+	 * @access public
+	 */
 	public $lastError;
 	private $impersonate;
 
