@@ -3,7 +3,7 @@ Exchange Web Services for PHP
 
 This is a basic library that abstracts a few of common operations using the Exchange Web Services API present on Exchange Server 2007. It is based in large part on [Talking SOAP with Exchange](http://www.howtoforge.com/talking-soap-with-exchange).
 
-Right now only basic operations are supported (getting a list of all email from a user's inbox, and sending a message), but as time goes on hopefully more funtionality will be added.
+Right now only basic operations are supported (getting a list of all email from a user's inbox (including attachments), sending email messages, getting calendar events, and utilizing Delegate support to access multiple accounts), but as time goes on hopefully more funtionality will be added.
 
 Installation
 ------------
