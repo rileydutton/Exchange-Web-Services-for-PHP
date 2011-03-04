@@ -18,6 +18,7 @@ class Exchangeclient {
 	 */
 	public $lastError;
 	private $impersonate;
+	private $delegate;
 
 	/**
 	 * Initialize the class. This could be better as a __construct, but for CodeIgniter compatibility we keep it separate.
@@ -29,12 +30,12 @@ class Exchangeclient {
 	 * @param string $wsdl. (The path to the WSDL file. If you put them in the same directory as the Exchangeclient.php script, you can leave this alone. default: "Services.wsdl")
 	 * @return void
 	 */
-	function init($user, $pass, $impersonate=NULL, $wsdl="Services.wsdl") {
+	function init($user, $pass, $delegate=NULL, $wsdl="Services.wsdl") {
 		$this->wsdl = $wsdl;
 		$this->user = $user;
 		$this->pass = $pass;
-		
-		$this->client = new ExchangeNTLMSoapClient($this->wsdl);
+		$this->delegate = $delegate;
+		$this->client = new ExchangeNTLMSoapClient($this->wsdl, array('trace' => 1));
 		$this->client->user = $this->user;
 		$this->client->password = $this->pass;
 	
@@ -57,6 +58,9 @@ class Exchangeclient {
 		
 		$CreateItem->SendMeetingInvitations = "SendToNone";
 		$CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = "calendar";
+		if($this->delegate != NULL) {
+			$FindItem->SavedItemFolderId->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
+		}
 		$CreateItem->Items->CalendarItem->Subject = $subject;
 		$CreateItem->Items->CalendarItem->Start = $start; #e.g. "2010-09-21T16:00:00Z"; # ISO date format. Z denotes UTC time
 		$CreateItem->Items->CalendarItem->End = $end;
@@ -65,7 +69,7 @@ class Exchangeclient {
 		$CreateItem->Items->CalendarItem->Location = $location;
 
 		$response = $this->client->CreateItem($CreateItem);
-		
+		print_r($response);
 		$this->teardown();
 		
 		if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError")
@@ -75,6 +79,90 @@ class Exchangeclient {
 			return false;
 		}
 		
+	}
+	
+	function get_events($start, $end) {
+		$this->setup();
+		
+		$FindItem->Traversal = "Shallow";
+		$FindItem->ItemShape->BaseShape = "IdOnly";
+		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = "calendar";
+		if($this->delegate != NULL) {
+			$FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
+		}
+		$FindItem->CalendarView->StartDate = $start;
+		$FindItem->CalendarView->EndDate = $end;
+		
+		$response = $this->client->FindItem($FindItem);
+		
+		//print_r($response);
+		//echo "REQUEST:\n" . $this->client->__getLastRequest() . "\n";
+		
+		if($response->ResponseMessages->FindItemResponseMessage->ResponseCode != "NoError") {
+			$this->lastError = $response->ResponseMessages->FindItemResponseMessage->ResponseCode;
+			return false;
+		}
+		
+		$items = $response->ResponseMessages->FindItemResponseMessage->RootFolder->Items->CalendarItem;
+		
+		$i = 0;
+		$events = array();
+		
+		if(count($items) == 0)
+			return false; //we didn't get anything back!
+		
+		if(!is_array($items)) //if we only returned one event, then it doesn't send it as an array, just as a single object. so put it into an array so that everything works as expected.
+			$items = array($items);
+		
+		foreach($items as $item) {
+
+			$GetItem->ItemShape->BaseShape = "Default";
+			$GetItem->ItemIds->ItemId = $item->ItemId;
+			$response = $this->client->GetItem($GetItem);
+			
+			if($response->ResponseMessages->GetItemResponseMessage->ResponseCode != "NoError") {
+				$this->lastError = $response->ResponseMessages->GetItemResponseMessage->ResponseCode;
+				return false;
+			}
+			$eventobj = $response->ResponseMessages->GetItemResponseMessage->Items->CalendarItem;
+			
+			print_r($eventobj);
+			
+			$newevent = null;
+			$newevent->id = $eventobj->ItemId->Id;
+			$newevent->changekey = $eventobj->ItemId->ChangeKey;
+			$newevent->subject = $eventobj->Subject;
+			$newevent->start = strtotime($eventobj->Start);
+			$newevent->end = strtotime($eventobj->End);
+			$newevent->location = $eventobj->Location;
+			
+			$organizer = null;
+			$organizer->name = $eventobj->Organizer->Mailbox->Name;
+			$organizer->email = $eventobj->Organizer->Mailbox->EmailAddress;
+			
+			$people = array();
+			$required = $eventobj->RequiredAttendees->Attendee;
+			if(!is_array($required))
+				$required = array($required);
+			
+			foreach($required as $r) {
+				$o = null;
+				$o->name = $r->Mailbox->Name;
+				$o->email = $r->Mailbox->EmailAddress;
+				$people[] = $o;
+			}
+			
+			$newevent->organizer = $organizer;
+			$newevent->people = $people;
+			$newevent->allpeople = array_merge(array($organizer), $people);
+									
+			$events[] = $newevent;
+
+		}
+		
+		$this->teardown();
+		
+		return $events;
 	}
 	
 	/**
@@ -93,8 +181,14 @@ class Exchangeclient {
 		$FindItem->Traversal = "Shallow";
 		$FindItem->ItemShape->BaseShape = "IdOnly";
 		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = "inbox";
+		if($this->delegate != NULL) {
+			$FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
+		}
 		
 		$response = $this->client->FindItem($FindItem);
+		
+		//print_r($response);
+		//echo "REQUEST:\n" . $this->client->__getLastRequest() . "\n";
 		
 		if($response->ResponseMessages->FindItemResponseMessage->ResponseCode != "NoError") {
 			$this->lastError = $response->ResponseMessages->FindItemResponseMessage->ResponseCode;
@@ -106,7 +200,14 @@ class Exchangeclient {
 		$i = 0;
 		$messages = array();
 		
+		if(count($items) == 0)
+			return false; //we didn't get anything back!
+		
+		if(!is_array($items)) //if we only returned one message, then it doesn't send it as an array, just as a single object. so put it into an array so that everything works as expected.
+			$items = array($items);
+		
 		foreach($items as $item) {
+
 			$GetItem->ItemShape->BaseShape = "Default";
 			$GetItem->ItemShape->IncludeMimeContent = "true";
 			$GetItem->ItemIds->ItemId = $item->ItemId;
@@ -129,6 +230,16 @@ class Exchangeclient {
 			$newmessage->from = $messageobj->From->Mailbox->EmailAddress;
 			$newmessage->from_name = $messageobj->From->Mailbox->Name;
 			$newmessage->subject = $messageobj->Subject;
+			$newmessage->attachments = array();
+			
+			if($messageobj->HasAttachments == 1) {
+				if(!is_array($messageobj->Attachments->FileAttachment))
+					$messageobj->Attachments->FileAttachment = array($messageobj->Attachments->FileAttachment);
+				foreach($messageobj->Attachments->FileAttachment as $attachment) {
+					$newmessage->attachments[] = $this->get_attachment($attachment->AttachmentId);
+				}
+				
+			}
 			
 			$messages[] = $newmessage;
 			
@@ -141,6 +252,22 @@ class Exchangeclient {
 		
 		return $messages;
 		
+	}
+	
+	private function get_attachment($AttachmentID) {
+		
+		$GetAttachment->AttachmentIds->AttachmentId = $AttachmentID;
+		
+		$response = $this->client->GetAttachment($GetAttachment);
+			
+		if($response->ResponseMessages->GetAttachmentResponseMessage->ResponseCode != "NoError") {
+			$this->lastError = $response->ResponseMessages->GetAttachmentResponseMessage->ResponseCode;
+			return false;
+		}
+		
+		$attachmentobj = $response->ResponseMessages->GetAttachmentResponseMessage->Attachments->FileAttachment;
+		
+		return $attachmentobj;
 	}
 	
 	/**
@@ -238,7 +365,7 @@ class Exchangeclient {
 	 * @access private
 	 * @return void
 	 */
-	function teardown() {
+	private function teardown() {
 		stream_wrapper_restore('http');
 	}
 }
