@@ -26,7 +26,7 @@ class Exchangeclient {
 	 * @access public
 	 * @param string $user (the username of the mailbox account you want to use on the Exchange server)
 	 * @param string $pass (the password of the account)
-	 * @param string $impersonate. (the email address of someone you want to impoersonate on the server [NOTE: Your server must have Impersonation enabled (most don't) and you're account must have impersonation permissions (most don't), otherwise this will cause everything to fail! If you don't know what it is, leave it alone :-)] default: NULL)
+	 * @param string $delegate. (the email address you would like to access...the account you are logging in as must be an administrator account.
 	 * @param string $wsdl. (The path to the WSDL file. If you put them in the same directory as the Exchangeclient.php script, you can leave this alone. default: "Services.wsdl")
 	 * @return void
 	 */
@@ -180,7 +180,7 @@ class Exchangeclient {
 		
 		$FindItem->Traversal = "Shallow";
 		$FindItem->ItemShape->BaseShape = "IdOnly";
-		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = "inbox";
+		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
 		if($this->delegate != NULL) {
 			$FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
 		}
