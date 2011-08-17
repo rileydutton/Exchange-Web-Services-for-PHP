@@ -69,7 +69,7 @@ class Exchangeclient {
 		$CreateItem->Items->CalendarItem->Location = $location;
 
 		$response = $this->client->CreateItem($CreateItem);
-		print_r($response);
+		//print_r($response);
 		$this->teardown();
 		
 		if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError")
@@ -126,7 +126,7 @@ class Exchangeclient {
 			}
 			$eventobj = $response->ResponseMessages->GetItemResponseMessage->Items->CalendarItem;
 			
-			print_r($eventobj);
+			//print_r($eventobj);
 			
 			$newevent = null;
 			$newevent->id = $eventobj->ItemId->Id;
@@ -229,6 +229,25 @@ class Exchangeclient {
 			$newmessage->ItemId = $item->ItemId;
 			$newmessage->from = $messageobj->From->Mailbox->EmailAddress;
 			$newmessage->from_name = $messageobj->From->Mailbox->Name;
+			
+			$newmessage->to_recipients = array();
+			if(!is_array($messageobj->ToRecipients->Mailbox))
+				$messageobj->ToRecipients->Mailbox = array($messageobj->ToRecipients->Mailbox);
+			foreach($messageobj->ToRecipients->Mailbox as $mailbox) {
+				$newmessage->to_recipients[] = $mailbox;
+			}
+			
+			$newmessage->cc_recipients = array();
+			if(isset($messageobj->CcRecipients->Mailbox)){
+				if(!is_array($messageobj->CcRecipients->Mailbox))
+					$messageobj->CcRecipients->Mailbox = array($messageobj->CcRecipients->Mailbox);
+				foreach($messageobj->CcRecipients->Mailbox as $mailbox) {
+					$newmessage->cc_recipients[] = $mailbox;
+				}
+			}
+			
+			$newmessage->time_sent =  $messageobj->DateTimeSent;
+			$newmessage->time_created = $messageobj->DateTimeCreated;
 			$newmessage->subject = $messageobj->Subject;
 			$newmessage->attachments = array();
 			
@@ -337,6 +356,61 @@ class Exchangeclient {
 		else {
 			$this->lastError = $response->ResponseMessages->DeleteItemResponseMessage->ResponseCode;
 			return false;
+		}
+	}
+	
+	/**
+	 * Moves a message to a different folder.
+	 * 
+	 * @access public
+	 * @param ItemId $ItemId (such as one returned by get_messages, has Id and ChangeKey)
+	 * @return ItemID $ItemId The new ItemId (such as one returned by get_messages, has Id and ChangeKey)
+	 */
+	function move_message($ItemId, $FolderId) {
+		$this->setup();
+		
+		$MoveItem->ToFolderId->FolderId->Id = $FolderId;
+		$MoveItem->ItemIds->ItemId = $ItemId;
+		
+		$response = $this->client->MoveItem($MoveItem);
+		
+		if($response->ResponseMessages->MoveItemResponseMessage->ResponseCode == "NoError")
+			return $response->ResponseMessages->MoveItemResponseMessage->Items->Message->ItemId;
+		else
+			$this->lastError = $response->ResponseMessages->MoveItemResponseMessage->ResponseCode;
+	}
+	
+	/**
+	 * Get all subfolders of a single folder.
+	 * 
+	 * @access public
+	 * @param string $ParentFolderId string representing the folder id of the parent folder, defaults to "inbox"
+	 * @param bool $Distinguished Defines whether or not its a distinguished folder name or not
+	 * @return object $response the response containing all the folders
+	 */
+	function get_subfolders($ParentFolderId = "inbox", $Distinguished = TRUE) {
+		$this->setup();
+		
+		$FolderItem->FolderShape->BaseShape = "Default";
+		$FolderItem->Traversal = "Shallow";
+		
+		if ($Distinguished)
+			$FolderItem->ParentFolderIds->DistinguishedFolderId->Id = $ParentFolderId;
+		else
+			$FolderItem->ParentFolderIds->FolderId->Id = $ParentFolderId;
+		
+		$response = $this->client->FindFolder($FolderItem);
+		
+		if ($response->ResponseMessages->FindFolderResponseMessage->ResponseCode == "NoError"){
+			$folders = array();
+			if (!is_array($response->ResponseMessages->FindFolderResponseMessage->RootFolder->Folders->Folder))
+				$folders[] = $response->ResponseMessages->FindFolderResponseMessage->RootFolder->Folders->Folder;
+			else
+				$folders = $response->ResponseMessages->FindFolderResponseMessage->RootFolder->Folders->Folder;
+				
+			return $folders;
+		} else {
+			$this->lastError = $response->ResponseMessages->FindFolderResponseMessage->ResponseCode;
 		}
 	}
 	
