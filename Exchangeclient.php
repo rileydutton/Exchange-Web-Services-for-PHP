@@ -319,6 +319,9 @@ class Exchangeclient {
 		
 		if($markasread)
 			$CreateItem->Items->Message->IsRead = "true";
+			
+		if($this->delegate != NULL) 
+			$CreateItem->Items->Message->From->Mailbox->EmailAddress = $this->delegate;
 		
 		$response = $this->client->CreateItem($CreateItem);
 		
