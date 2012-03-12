@@ -14,7 +14,7 @@ You can give this a shot, but it doesn't work for me on my Exchange server. If i
 
 The basic installation is basically just to tell the ExchangeClient to look on the Exchange Server itself for the SOAP files. You would do so during initialization, like so:
 
-	$exchangeclient = new Exchangeclient();
+	$exchangeclient = new ExchangeClient();
 	$exchangeclient->init("mailbox_username", "mailbox_password", NULL, "http://exchange.server.local/EWS/Services.wsdl");
 
 If that works for you, great. If not, then you had the same problem as me, see the Advanced section below.
@@ -31,7 +31,7 @@ http://exchange.server.local/EWS/messages.xsd
 
 http://exchange.server.local/EWS/types.xsd
 
-Download those three files, and place them in the same directory as the "Exchangeclient.php" file.
+Download those three files, and place them in the same directory as the "ExchangeClient.php" file.
 
 Finally, open up the Services.wsdl file in a TEXT EDITOR (do not use a Word Processor like MS Word), and at the very bottom of the file, before the final </wsdl:definitions> tag, add the following:
 
@@ -50,18 +50,9 @@ Example
 
 The following code initializes the library and sends off a quick test messsage:
 
-	$exchangeclient = new Exchangeclient();
-	$exchangeclient->init("mailbox_username", "mailbox_password");
-	$exchangeclient->send_message("you@otherdomain.com", "Subject", "A test message");
-
-
-CodeIgniter
-----------
-This code is compatible with CodeIgntier. To use, just drop the Exchangeclient.php file (as well as the 3 SOAP definition files from the installation instructions) into your "application/libraries" folder. Then use:
-
-	$this->load->library("Exchangeclient");
-	$this->exchangeclient->init("mailbox_username", "mailbox_password");
-	etc...
+	$ec = new ExchangeClient();
+	$ec->init("mailbox_username", "mailbox_password");
+	$ec->send_message("you@otherdomain.com", "Subject", "A test message");
 
 
 License
