@@ -458,7 +458,7 @@ class ImpersonationHeader {
 }
 
 class NTLMSoapClient extends SoapClient {
-	function __doRequest($request, $location, $action, $version) {
+	function __doRequest($request, $location, $action, $version, $one_way = 0) {
 		//print_r($request);
 		//print($location);
 		$headers = array(
