@@ -1,10 +1,11 @@
 <?php
+
 /**
  * Exchangeclient class.
  *
  * @author Riley Dutton
  */
-class Exchangeclient {  
+class ExchangeClient {  
 
 	private $wsdl;
 	private $client;
@@ -30,7 +31,7 @@ class Exchangeclient {
 	 * @param string $wsdl. (The path to the WSDL file. If you put them in the same directory as the Exchangeclient.php script, you can leave this alone. default: "Services.wsdl")
 	 * @return void
 	 */
-	function init($user, $pass, $delegate=NULL, $wsdl="Services.wsdl") {
+	public function init($user, $pass, $delegate = NULL, $wsdl = "Services.wsdl") {
 		$this->wsdl = $wsdl;
 		$this->user = $user;
 		$this->pass = $pass;
@@ -52,8 +53,7 @@ class Exchangeclient {
     * @param bool $isallday. (default: false)
     * @return bool $success (true if the message was created, false if there was an error)
     */
-   function create_event($subject, $start, $end, $location, $isallday=false) {
-		
+  public function create_event($subject, $start, $end, $location, $isallday = false) {
 		$this->setup();
 		
 		$CreateItem->SendMeetingInvitations = "SendToNone";
@@ -69,7 +69,7 @@ class Exchangeclient {
 		$CreateItem->Items->CalendarItem->Location = $location;
 
 		$response = $this->client->CreateItem($CreateItem);
-		//print_r($response);
+
 		$this->teardown();
 		
 		if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError")
@@ -78,25 +78,23 @@ class Exchangeclient {
 			$this->lastError = $response->ResponseMessages->CreateItemResponseMessage->ResponseCode;
 			return false;
 		}
-		
 	}
 	
-	function get_events($start, $end) {
+	public function get_events($start, $end) {
 		$this->setup();
 		
 		$FindItem->Traversal = "Shallow";
 		$FindItem->ItemShape->BaseShape = "IdOnly";
 		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = "calendar";
+
 		if($this->delegate != NULL) {
 			$FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
 		}
+    
 		$FindItem->CalendarView->StartDate = $start;
 		$FindItem->CalendarView->EndDate = $end;
 		
 		$response = $this->client->FindItem($FindItem);
-		
-		//print_r($response);
-		//echo "REQUEST:\n" . $this->client->__getLastRequest() . "\n";
 		
 		if($response->ResponseMessages->FindItemResponseMessage->ResponseCode != "NoError") {
 			$this->lastError = $response->ResponseMessages->FindItemResponseMessage->ResponseCode;
@@ -115,7 +113,6 @@ class Exchangeclient {
 			$items = array($items);
 		
 		foreach($items as $item) {
-
 			$GetItem->ItemShape->BaseShape = "Default";
 			$GetItem->ItemIds->ItemId = $item->ItemId;
 			$response = $this->client->GetItem($GetItem);
@@ -124,9 +121,8 @@ class Exchangeclient {
 				$this->lastError = $response->ResponseMessages->GetItemResponseMessage->ResponseCode;
 				return false;
 			}
+
 			$eventobj = $response->ResponseMessages->GetItemResponseMessage->Items->CalendarItem;
-			
-			//print_r($eventobj);
 			
 			$newevent = null;
 			$newevent->id = $eventobj->ItemId->Id;
@@ -142,6 +138,7 @@ class Exchangeclient {
 			
 			$people = array();
 			$required = $eventobj->RequiredAttendees->Attendee;
+
 			if(!is_array($required))
 				$required = array($required);
 			
@@ -157,7 +154,6 @@ class Exchangeclient {
 			$newevent->allpeople = array_merge(array($organizer), $people);
 									
 			$events[] = $newevent;
-
 		}
 		
 		$this->teardown();
@@ -174,21 +170,18 @@ class Exchangeclient {
 	 * @param string $folder. (default: "inbox", other options include "sentitems", this must be a DistinguishedFolderId)
 	 * @return array $messages (an array of objects representing the messages)
 	 */
-	function get_messages($limit=50, $onlyunread=false, $folder="inbox") {
-		
+	public function get_messages($limit = 50, $onlyunread = false, $folder = "inbox") {
 		$this->setup();
 		
 		$FindItem->Traversal = "Shallow";
 		$FindItem->ItemShape->BaseShape = "IdOnly";
 		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
+
 		if($this->delegate != NULL) {
 			$FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
 		}
 		
 		$response = $this->client->FindItem($FindItem);
-		
-		//print_r($response);
-		//echo "REQUEST:\n" . $this->client->__getLastRequest() . "\n";
 		
 		if($response->ResponseMessages->FindItemResponseMessage->ResponseCode != "NoError") {
 			$this->lastError = $response->ResponseMessages->FindItemResponseMessage->ResponseCode;
@@ -207,7 +200,6 @@ class Exchangeclient {
 			$items = array($items);
 		
 		foreach($items as $item) {
-
 			$GetItem->ItemShape->BaseShape = "Default";
 			$GetItem->ItemShape->IncludeMimeContent = "true";
 			$GetItem->ItemIds->ItemId = $item->ItemId;
@@ -219,6 +211,7 @@ class Exchangeclient {
 			}
 			
 			$messageobj = $response->ResponseMessages->GetItemResponseMessage->Items->Message;
+
 			if($onlyunread && $messageobj->IsRead)
 				continue;
 
@@ -231,16 +224,22 @@ class Exchangeclient {
 			$newmessage->from_name = $messageobj->From->Mailbox->Name;
 			
 			$newmessage->to_recipients = array();
-			if(!is_array($messageobj->ToRecipients->Mailbox))
+
+			if(!is_array($messageobj->ToRecipients->Mailbox)) {
 				$messageobj->ToRecipients->Mailbox = array($messageobj->ToRecipients->Mailbox);
+      }
+
 			foreach($messageobj->ToRecipients->Mailbox as $mailbox) {
 				$newmessage->to_recipients[] = $mailbox;
 			}
 			
 			$newmessage->cc_recipients = array();
-			if(isset($messageobj->CcRecipients->Mailbox)){
-				if(!is_array($messageobj->CcRecipients->Mailbox))
+
+			if(isset($messageobj->CcRecipients->Mailbox)) {
+				if(!is_array($messageobj->CcRecipients->Mailbox)) {
 					$messageobj->CcRecipients->Mailbox = array($messageobj->CcRecipients->Mailbox);
+        }
+
 				foreach($messageobj->CcRecipients->Mailbox as $mailbox) {
 					$newmessage->cc_recipients[] = $mailbox;
 				}
@@ -252,29 +251,28 @@ class Exchangeclient {
 			$newmessage->attachments = array();
 			
 			if($messageobj->HasAttachments == 1) {
-				if(!is_array($messageobj->Attachments->FileAttachment))
+				if(!is_array($messageobj->Attachments->FileAttachment)) {
 					$messageobj->Attachments->FileAttachment = array($messageobj->Attachments->FileAttachment);
+        }
+
 				foreach($messageobj->Attachments->FileAttachment as $attachment) {
 					$newmessage->attachments[] = $this->get_attachment($attachment->AttachmentId);
 				}
-				
 			}
 			
 			$messages[] = $newmessage;
 			
-			$i++;
-			if($i > $limit)
+			if(++$i > $limit) {
 				break;
+      }
 		}
 		
 		$this->teardown();
 		
 		return $messages;
-		
 	}
 	
 	private function get_attachment($AttachmentID) {
-		
 		$GetAttachment->AttachmentIds->AttachmentId = $AttachmentID;
 		
 		$response = $this->client->GetAttachment($GetAttachment);
@@ -301,15 +299,15 @@ class Exchangeclient {
 	 * @param bool $markasread. (Mark as read after sending? This currently does nothing. default: true)
 	 * @return bool $success. (True if the message was sent, false if there was an error).
 	 */
-	function send_message($to, $subject, $content, $bodytype="Text", $saveinsent=true, $markasread=true) {
+	public function send_message($to, $subject, $content, $bodytype = "Text", $saveinsent = true, $markasread = true) {
 		$this->setup();
 		
 		if($saveinsent) {
 			$CreateItem->MessageDisposition = "SendOnly";
 			$CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = "sentitems";
-		}
-		else
+		} else {
 			$CreateItem->MessageDisposition = "SendOnly";
+    }
 		
 		$CreateItem->Items->Message->ItemClass = "IPM.Note";
 		$CreateItem->Items->Message->Subject = $subject;
@@ -317,23 +315,24 @@ class Exchangeclient {
 		$CreateItem->Items->Message->Body->_ = $content;
 		$CreateItem->Items->Message->ToRecipients->Mailbox->EmailAddress = $to;
 		
-		if($markasread)
+		if($markasread) {
 			$CreateItem->Items->Message->IsRead = "true";
+    }
 			
-		if($this->delegate != NULL) 
+		if($this->delegate != NULL) {
 			$CreateItem->Items->Message->From->Mailbox->EmailAddress = $this->delegate;
+    }
 		
 		$response = $this->client->CreateItem($CreateItem);
 		
 		$this->teardown();
 		
-		if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError")
+		if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError") { 
 			return true;
-		else {
+		} else {
 			$this->lastError = $response->ResponseMessages->CreateItemResponseMessage->ResponseCode;
 			return false;
 		}
-		
 	}
 	
 	/**
@@ -344,7 +343,7 @@ class Exchangeclient {
 	 * @param string $deletetype. (default: "HardDelete")
 	 * @return bool $success (true: message was deleted, false: message failed to delete)
 	 */
-	function delete_message($ItemId, $deletetype="HardDelete") {
+	public function delete_message($ItemId, $deletetype = "HardDelete") {
 		$this->setup();
 		
 		$DeleteItem->DeleteType = $deletetype;
@@ -354,9 +353,9 @@ class Exchangeclient {
 		
 		$this->teardown();
 		
-		if($response->ResponseMessages->DeleteItemResponseMessage->ResponseCode == "NoError")
+		if($response->ResponseMessages->DeleteItemResponseMessage->ResponseCode == "NoError") { 
 			return true;
-		else {
+    } else {
 			$this->lastError = $response->ResponseMessages->DeleteItemResponseMessage->ResponseCode;
 			return false;
 		}
@@ -369,7 +368,7 @@ class Exchangeclient {
 	 * @param ItemId $ItemId (such as one returned by get_messages, has Id and ChangeKey)
 	 * @return ItemID $ItemId The new ItemId (such as one returned by get_messages, has Id and ChangeKey)
 	 */
-	function move_message($ItemId, $FolderId) {
+	public function move_message($ItemId, $FolderId) {
 		$this->setup();
 		
 		$MoveItem->ToFolderId->FolderId->Id = $FolderId;
@@ -377,10 +376,11 @@ class Exchangeclient {
 		
 		$response = $this->client->MoveItem($MoveItem);
 		
-		if($response->ResponseMessages->MoveItemResponseMessage->ResponseCode == "NoError")
+		if($response->ResponseMessages->MoveItemResponseMessage->ResponseCode == "NoError") {
 			return $response->ResponseMessages->MoveItemResponseMessage->Items->Message->ItemId;
-		else
-			$this->lastError = $response->ResponseMessages->MoveItemResponseMessage->ResponseCode;
+		} else {
+      $this->lastError = $response->ResponseMessages->MoveItemResponseMessage->ResponseCode;
+    }
 	}
 	
 	/**
@@ -391,25 +391,28 @@ class Exchangeclient {
 	 * @param bool $Distinguished Defines whether or not its a distinguished folder name or not
 	 * @return object $response the response containing all the folders
 	 */
-	function get_subfolders($ParentFolderId = "inbox", $Distinguished = TRUE) {
+  public function get_subfolders($ParentFolderId = "inbox", $Distinguished = TRUE) {
 		$this->setup();
 		
 		$FolderItem->FolderShape->BaseShape = "Default";
 		$FolderItem->Traversal = "Shallow";
 		
-		if ($Distinguished)
+		if ($Distinguished) {
 			$FolderItem->ParentFolderIds->DistinguishedFolderId->Id = $ParentFolderId;
-		else
+		} else {
 			$FolderItem->ParentFolderIds->FolderId->Id = $ParentFolderId;
+    }
 		
 		$response = $this->client->FindFolder($FolderItem);
 		
-		if ($response->ResponseMessages->FindFolderResponseMessage->ResponseCode == "NoError"){
+		if ($response->ResponseMessages->FindFolderResponseMessage->ResponseCode == "NoError") {
 			$folders = array();
-			if (!is_array($response->ResponseMessages->FindFolderResponseMessage->RootFolder->Folders->Folder))
+
+			if (!is_array($response->ResponseMessages->FindFolderResponseMessage->RootFolder->Folders->Folder)) {
 				$folders[] = $response->ResponseMessages->FindFolderResponseMessage->RootFolder->Folders->Folder;
-			else
+      }	else {
 				$folders = $response->ResponseMessages->FindFolderResponseMessage->RootFolder->Folders->Folder;
+      }
 				
 			return $folders;
 		} else {
@@ -424,7 +427,6 @@ class Exchangeclient {
 	 * @return void
 	 */
 	private function setup() {
-		
 		if($this->impersonate != NULL) {
 			$impheader = new ImpersonationHeader($this->impersonate);
 			$header = new SoapHeader("http://schemas.microsoft.com/exchange/services/2006/messages", "ExchangeImpersonation", $impheader, false);
@@ -432,8 +434,10 @@ class Exchangeclient {
 		}
 			
 		stream_wrapper_unregister('http');
-		stream_wrapper_register('http', 'ExchangeNTLMStream') or die("Failed to register protocol");
-		
+
+		if(!stream_wrapper_register('http', 'ExchangeNTLMStream')) {
+      throw new Exception("Failed to register protocol");
+    }
 	}
 	
 	/**
@@ -448,152 +452,9 @@ class Exchangeclient {
 }
 
 class ImpersonationHeader {
-
-	var $ConnectingSID;
+	public $ConnectingSID;
 
 	function __construct($email) {
 		$this->ConnectingSID->PrimarySmtpAddress = $email;
 	}
-
-}
-
-class NTLMSoapClient extends SoapClient {
-	function __doRequest($request, $location, $action, $version, $one_way = 0) {
-		//print_r($request);
-		//print($location);
-		$headers = array(
-			'Method: POST',
-			'Connection: Keep-Alive',
-			'User-Agent: PHP-SOAP-CURL',
-			'Content-Type: text/xml; charset=utf-8',
-			'SOAPAction: "'.$action.'"',
-		);  
-		$this->__last_request_headers = $headers;
-		$ch = curl_init($location);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-		curl_setopt($ch, CURLOPT_POST, true );
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $request);
-		curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-		curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_NTLM);
-		curl_setopt($ch, CURLOPT_USERPWD, $this->user.':'.$this->password);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, true);
-		$response = curl_exec($ch);
-		//print("RESPONSE: ");
-		//print_r($response);
-		return $response;
-	}   
-	function __getLastRequestHeaders() {
-		return implode("n", $this->__last_request_headers)."n";
-	}   
-}
-
-class ExchangeNTLMSoapClient extends NTLMSoapClient {
-	public $user = '';
-	public $password = '';
-}
-
-class NTLMStream {
-	private $path;
-	private $mode;
-	private $options;
-	private $opened_path;
-	private $buffer;
-	private $pos;
-
-	public function stream_open($path, $mode, $options, $opened_path) {
-		echo "[NTLMStream::stream_open] $path , mode=$mode n";
-		$this->path = $path;
-		$this->mode = $mode;
-		$this->options = $options;
-		$this->opened_path = $opened_path;
-		$this->createBuffer($path);
-		return true;
-	}
-
-	public function stream_close() {
-		echo "[NTLMStream::stream_close] n";
-		curl_close($this->ch);
-	}
-
-	public function stream_read($count) {
-		echo "[NTLMStream::stream_read] $count n";
-		if(strlen($this->buffer) == 0) {
-			return false;
-		}
-		$read = substr($this->buffer,$this->pos, $count);
-		$this->pos += $count;
-		return $read;
-	}
-
-	public function stream_write($data) {
-		echo "[NTLMStream::stream_write] n";
-		if(strlen($this->buffer) == 0) {
-			return false;
-		}
-		return true;
-	}
-
-	public function stream_eof() {
-		echo "[NTLMStream::stream_eof] ";
-		if($this->pos > strlen($this->buffer)) {
-			echo "true n";
-			return true;
-		}
-		echo "false n";
-		return false;
-	}
-
-	/* return the position of the current read pointer */
-	public function stream_tell() {
-		echo "[NTLMStream::stream_tell] n";
-		return $this->pos;
-	}
-
-	public function stream_flush() {
-		echo "[NTLMStream::stream_flush] n";
-		$this->buffer = null;
-		$this->pos = null;
-	}
-
-	public function stream_stat() {
-		echo "[NTLMStream::stream_stat] n";
-		$this->createBuffer($this->path);
-		$stat = array(
-			'size' => strlen($this->buffer),
-		);
-		return $stat;
-	}
-
-	public function url_stat($path, $flags) {
-		echo "[NTLMStream::url_stat] n";
-		$this->createBuffer($path);
-		$stat = array(
-			'size' => strlen($this->buffer),
-		);
-		return $stat;
-	}
-
-	/* Create the buffer by requesting the url through cURL */
-	private function createBuffer($path) {
-		if($this->buffer) {
-			return;
-		}
-		echo "[NTLMStream::createBuffer] create buffer from : $pathn";
-		$this->ch = curl_init($path);
-		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($this->ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-		curl_setopt($this->ch, CURLOPT_HTTPAUTH, CURLAUTH_NTLM);
-		curl_setopt($this->ch, CURLOPT_USERPWD, $this->user.':'.$this->password);
-		echo $this->buffer = curl_exec($this->ch);
-		echo "[NTLMStream::createBuffer] buffer size : ".strlen($this->buffer)."bytesn";
-		$this->pos = 0;
-	}
-}
-
-class ExchangeNTLMStream extends NTLMStream {
-	//protected $user = '';
-	//protected $password = '';
 }
