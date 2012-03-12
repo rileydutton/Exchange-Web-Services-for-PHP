@@ -43,12 +43,14 @@ Finally, open up the Services.wsdl file in a TEXT EDITOR (do not use a Word Proc
 
 Be sure to replace the exchange.server.local with your actual exchange server address.
 
-That's it! You should now be ready to use the library. Just include it in your PHP script, and you're off. 
+That's it! You should now be ready to use the library. Just include 'init.php' in your PHP script, and you're off. 
 
 Example
 -------
 
 The following code initializes the library and sends off a quick test messsage:
+
+  include "init.php";
 
 	$ec = new ExchangeClient();
 	$ec->init("mailbox_username", "mailbox_password");
