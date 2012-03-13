@@ -22,8 +22,16 @@ class NTLMStream {
 	private $mode;
 	private $options;
 	private $opened_path;
-	private $buffer;
 	private $pos;
+
+	protected $buffer;
+	protected static $username;
+	protected static $password;
+
+	public static function setCredentials($username, $password) {
+		self::$username = $username;
+		self::$password = $password;
+	}
 
 	public function stream_open($path, $mode, $options, $opened_path) {
 		$this->path = $path;
@@ -62,7 +70,6 @@ class NTLMStream {
     return $this->pos > strlen($this->buffer);
 	}
 
-	/* return the position of the current read pointer */
 	public function stream_tell() {
 		return $this->pos;
 	}
@@ -73,13 +80,7 @@ class NTLMStream {
 	}
 
 	public function stream_stat() {
-		$this->createBuffer($this->path);
-
-		$stat = array(
-			'size' => strlen($this->buffer),
-		);
-
-		return $stat;
+		return $this->url_stat($this->path, 0);
 	}
 
 	public function url_stat($path, $flags) {
@@ -93,7 +94,7 @@ class NTLMStream {
 	}
 
 	/* Create the buffer by requesting the url through cURL */
-	private function createBuffer($path) {
+	protected function createBuffer($path) {
 		if($this->buffer) {
 			return;
 		}
@@ -102,7 +103,7 @@ class NTLMStream {
 		curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($this->ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 		curl_setopt($this->ch, CURLOPT_HTTPAUTH, CURLAUTH_NTLM);
-		curl_setopt($this->ch, CURLOPT_USERPWD, $this->user.':'.$this->password);
+		curl_setopt($this->ch, CURLOPT_USERPWD, self::$username.':'.self::$password);
 
     $this->buffer = curl_exec($this->ch);
 		$this->pos = 0;

@@ -22,7 +22,6 @@ class NTLMSoapClient extends SoapClient {
 		curl_setopt($ch, CURLOPT_USERPWD, $this->user.':'.$this->password);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-		curl_setopt($ch, CURLOPT_VERBOSE, true);
 
     return curl_exec($ch);
 	}   

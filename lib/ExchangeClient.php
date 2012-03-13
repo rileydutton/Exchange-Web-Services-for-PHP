@@ -36,10 +36,15 @@ class ExchangeClient {
 		$this->user = $user;
 		$this->pass = $pass;
 		$this->delegate = $delegate;
+
+		$this->setup();
+
 		$this->client = new ExchangeNTLMSoapClient($this->wsdl, array('trace' => 1));
+
+		$this->teardown();
+
 		$this->client->user = $this->user;
 		$this->client->password = $this->pass;
-	
 	}
    
    /**
@@ -432,12 +437,19 @@ class ExchangeClient {
 			$header = new SoapHeader("http://schemas.microsoft.com/exchange/services/2006/messages", "ExchangeImpersonation", $impheader, false);
 			$this->client->__setSoapHeaders($header);
 		}
+
+		ExchangeNTLMStream::setCredentials($this->user, $this->pass);
 			
 		stream_wrapper_unregister('http');
+		stream_wrapper_unregister('https');
 
 		if(!stream_wrapper_register('http', 'ExchangeNTLMStream')) {
-      throw new Exception("Failed to register protocol");
-    }
+			throw new Exception("Failed to register protocol");
+		}
+
+		if(!stream_wrapper_register('https', 'ExchangeNTLMStream')) {
+			throw new Exception("Failed to register protocol");
+		}
 	}
 	
 	/**
@@ -448,6 +460,7 @@ class ExchangeClient {
 	 */
 	private function teardown() {
 		stream_wrapper_restore('http');
+		stream_wrapper_restore('https');
 	}
 }
 
