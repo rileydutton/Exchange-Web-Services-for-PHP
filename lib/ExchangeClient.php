@@ -175,8 +175,14 @@ class ExchangeClient {
 	public function get_messages($limit = 50, $onlyunread = false, $folder = "inbox") {
 		$this->setup();
 		
+		$FindItem = new stdClass();
 		$FindItem->Traversal = "Shallow";
+
+		$FindItem->ItemShape = new stdClass();
 		$FindItem->ItemShape->BaseShape = "IdOnly";
+
+		$FindItem->ParentFolderIds = new stdClass();
+		$FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
 		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
 
 		if($this->delegate != NULL) {
@@ -202,9 +208,15 @@ class ExchangeClient {
 			$items = array($items);
 		
 		foreach($items as $item) {
+			$GetItem = new stdClass();
+			$GetItem->ItemShape = new stdClass();
+
 			$GetItem->ItemShape->BaseShape = "Default";
 			$GetItem->ItemShape->IncludeMimeContent = "true";
+
+			$GetItem->ItemIds = new stdClass();
 			$GetItem->ItemIds->ItemId = $item->ItemId;
+
 			$response = $this->client->GetItem($GetItem);
 			
 			if($response->ResponseMessages->GetItemResponseMessage->ResponseCode != "NoError") {
@@ -217,7 +229,7 @@ class ExchangeClient {
 			if($onlyunread && $messageobj->IsRead)
 				continue;
 
-			$newmessage = null;
+			$newmessage = new stdClass();
 			$newmessage->bodytext = $messageobj->Body->_;
 			$newmessage->bodytype = $messageobj->Body->BodyType;
 			$newmessage->isread = $messageobj->IsRead;
@@ -275,6 +287,9 @@ class ExchangeClient {
 	}
 	
 	private function get_attachment($AttachmentID) {
+		$GetAttachment = new stdClass();
+		$GetAttachment->AttachmentIds = new stdClass();
+
 		$GetAttachment->AttachmentIds->AttachmentId = $AttachmentID;
 		
 		$response = $this->client->GetAttachment($GetAttachment);
