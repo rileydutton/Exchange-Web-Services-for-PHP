@@ -263,14 +263,17 @@ class ExchangeClient {
 			$newmessage->time_created = $messageobj->DateTimeCreated;
 			$newmessage->subject = $messageobj->Subject;
 			$newmessage->attachments = array();
-			
-			if($messageobj->HasAttachments == 1) {
-				if(!is_array($messageobj->Attachments->FileAttachment)) {
-					$messageobj->Attachments->FileAttachment = array($messageobj->Attachments->FileAttachment);
-        }
 
-				foreach($messageobj->Attachments->FileAttachment as $attachment) {
-					$newmessage->attachments[] = $this->get_attachment($attachment->AttachmentId);
+			if($messageobj->HasAttachments == 1) {
+				// TODO: support ItemAttachments
+				if(property_exists($messageobj->Attachments, 'FileAttachment')) {
+					if(!is_array($messageobj->Attachments->FileAttachment)) {
+						$messageobj->Attachments->FileAttachment = array($messageobj->Attachments->FileAttachment);
+					}
+
+					foreach($messageobj->Attachments->FileAttachment as $attachment) {
+						$newmessage->attachments[] = $this->get_attachment($attachment->AttachmentId);
+					}
 				}
 			}
 			
