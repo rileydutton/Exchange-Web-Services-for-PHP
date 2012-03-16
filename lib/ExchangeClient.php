@@ -390,7 +390,12 @@ class ExchangeClient {
 	 */
 	public function move_message($ItemId, $FolderId) {
 		$this->setup();
-		
+
+		$MoveItem = new stdClass();
+		$MoveItem->ToFolderId = new stdClass();
+		$MoveItem->ToFolderId->FolderId = new stdClass();
+		$MoveItem->ItemIds = new stdClass();
+
 		$MoveItem->ToFolderId->FolderId->Id = $FolderId;
 		$MoveItem->ItemIds->ItemId = $ItemId;
 		
@@ -401,6 +406,15 @@ class ExchangeClient {
 		} else {
       $this->lastError = $response->ResponseMessages->MoveItemResponseMessage->ResponseCode;
     }
+	}
+
+	public function getFolder($regex, $parent = 'inbox') {
+		foreach($this->get_subfolders($parent) as $folder) {
+			if(preg_match(sprintf('#%s#', $regex), $folder->DisplayName))
+				return $folder;
+		}
+
+		return false;
 	}
 	
 	/**
@@ -413,13 +427,19 @@ class ExchangeClient {
 	 */
   public function get_subfolders($ParentFolderId = "inbox", $Distinguished = TRUE) {
 		$this->setup();
-		
+
+		$FolderItem = new stdClass();
+		$FolderItem->FolderShape = new stdClass();
+		$FolderItem->ParentFolderIds = new stdClass();
+
 		$FolderItem->FolderShape->BaseShape = "Default";
 		$FolderItem->Traversal = "Shallow";
 		
 		if ($Distinguished) {
+			$FolderItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
 			$FolderItem->ParentFolderIds->DistinguishedFolderId->Id = $ParentFolderId;
 		} else {
+			$FolderItem->ParentFolderIds->FolderId = new stdClass();
 			$FolderItem->ParentFolderIds->FolderId->Id = $ParentFolderId;
     }
 		
