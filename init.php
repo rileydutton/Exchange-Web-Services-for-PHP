@@ -1,7 +1,9 @@
 <?php
 
-include "lib/NTLMStream.php";
-include "lib/NTLMSoapClient.php";
-include "lib/ExchangeClient.php";
-include "lib/ExchangeNTLMStream.php";
+define('EXCHANGE_ROOT', realpath(dirname(__FILE__)));
+
+include EXCHANGE_ROOT . "/lib/NTLMStream.php";
+include EXCHANGE_ROOT . "/lib/NTLMSoapClient.php";
+include EXCHANGE_ROOT . "/lib/ExchangeClient.php";
+include EXCHANGE_ROOT . "/lib/ExchangeNTLMStream.php";
 
