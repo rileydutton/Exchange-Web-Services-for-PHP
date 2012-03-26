@@ -39,7 +39,12 @@ class ExchangeClient {
 
 		$this->setup();
 
-		$this->client = new NTLMSoapClient($this->wsdl, array('trace' => 1, 'login' => $user, 'password' => $pass));
+		$this->client = new NTLMSoapClient($this->wsdl, array(
+			'trace' => 1,
+			'exceptions' => true,
+			'login' => $user,
+			'password' => $pass
+		));
 
  		$this->teardown();
 	}
