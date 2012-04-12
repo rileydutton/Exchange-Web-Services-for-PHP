@@ -4,6 +4,7 @@
  * Exchangeclient class.
  *
  * @author Riley Dutton
+ * @author Rudolf Leemaker
  */
 class ExchangeClient {  
 
