@@ -50,7 +50,7 @@ Example
 
 The following code initializes the library and sends off a quick test messsage:
 
-  include "init.php";
+	include "init.php";
 
 	$ec = new ExchangeClient();
 	$ec->init("mailbox_username", "mailbox_password");
