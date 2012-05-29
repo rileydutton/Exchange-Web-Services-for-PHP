@@ -325,16 +325,23 @@ class ExchangeClient {
 	 * @param bool $markasread. (Mark as read after sending? This currently does nothing. default: true)
 	 * @return bool $success. (True if the message was sent, false if there was an error).
 	 */
-	public function send_message($to, $subject, $content, $bodytype = "Text", $saveinsent = true, $markasread = true) {
+	public function send_message($to, $subject, $content, $bodytype = "Text", $saveinsent = true, $markasread = true, $attachments = false) {
 		$this->setup();
 		
-		if($saveinsent) {
-			$CreateItem->MessageDisposition = "SendOnly";
-			$CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = "sentitems";
-		} else {
-			$CreateItem->MessageDisposition = "SendOnly";
+    if ($attachments && !is_array($attachments))
+      $attachments = false;
+    
+    if ($attachments) {
+    	$CreateItem->MessageDisposition = "SaveOnly";
+      $CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = 'drafts';
+    } else {
+      if($saveinsent) {
+    		$CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = "sentitems";
+  		} else {
+  			$CreateItem->MessageDisposition = "SendOnly";
+      }
     }
-		
+    
 		$CreateItem->Items->Message->ItemClass = "IPM.Note";
 		$CreateItem->Items->Message->Subject = $subject;
 		$CreateItem->Items->Message->Body->BodyType = $bodytype;
@@ -350,15 +357,70 @@ class ExchangeClient {
     }
 		
 		$response = $this->client->CreateItem($CreateItem);
-		
-		$this->teardown();
-		
-		if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError") { 
-			return true;
-		} else {
+    
+    if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode != "NoError") { 
 			$this->lastError = $response->ResponseMessages->CreateItemResponseMessage->ResponseCode;
+      $this->teardown();
 			return false;
 		}
+  
+    if($attachments && $response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError") {
+      $itemId = $response->ResponseMessages->CreateItemResponseMessage->Items->Message->ItemId->Id;
+      $itemChangeKey = $response->ResponseMessages->CreateItemResponseMessage->Items->Message->ItemId->ChangeKey;
+
+      foreach ($attachments AS $attachment) {
+        if (!file_exists($attachment)) continue;
+        
+        $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+        $attachmentMime = finfo_file($fileInfo, $attachment);
+        finfo_close($fileInfo);
+        
+        $filename = pathinfo($attachment, PATHINFO_BASENAME);
+        
+        $FileAttachment = new stdClass();
+        $FileAttachment->Content = file_get_contents($attachment);
+        $FileAttachment->ContentType = $attachmentMime;
+        $FileAttachment->Name = $filename;
+
+        $CreateAttachment = new stdClass();
+        $CreateAttachment->Attachments->FileAttachment = $FileAttachment;
+        $CreateAttachment->ParentItemId->Id = $itemId;
+        $CreateAttachment->ParentItemId->ChangeKey = $itemChangeKey;
+
+        $response = $this->client->CreateAttachment($CreateAttachment);
+        
+        if($response->ResponseMessages->CreateAttachmentResponseMessage->ResponseCode != "NoError") { 
+          $this->lastError = $response->ResponseMessages->CreateAttachmentResponseMessage->ResponseCode;
+          return false;
+        }
+        
+        $itemId = $response->ResponseMessages->CreateAttachmentResponseMessage->Attachments->FileAttachment->AttachmentId->RootItemId;
+        $itemChangeKey = $response->ResponseMessages->CreateAttachmentResponseMessage->Attachments->FileAttachment->AttachmentId->RootItemChangeKey;
+      }
+      
+      $SendItem = new stdClass();
+      $SendItem->ItemIds->ItemId->Id = $itemId;
+      $SendItem->ItemIds->ItemId->ChangeKey = $itemChangeKey;
+      
+      if($saveinsent) {
+        $SendItem->SaveItemToFolder = true;
+    		$SendItem->SavedItemFolderId->DistinguishedFolderId->Id = "sentitems";
+  		} else {
+        $SendItem->SaveItemToFolder = false;
+      }
+      
+      $response = $this->client->SendItem($SendItem);
+      
+      if($response->ResponseMessages->SendItemResponseMessage->ResponseCode != "NoError") { 
+        $this->lastError = $response->ResponseMessages->SendItemResponseMessage->ResponseCode;
+        $this->teardown();
+        return false;
+      }
+    }
+ 
+		$this->teardown();
+		
+    return true;
 	}
 	
 	/**
