@@ -36,7 +36,14 @@ class NTLMSoapClient extends SoapClient {
 		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 
-    return curl_exec($ch);
+    $ewsResponse = curl_exec($ch);
+    
+    // Absolutely stupid hack necessary to get around Microsoft invalid XML response that
+    // occurs every once in a while
+    // http://social.technet.microsoft.com/Forums/pl-PL/exchangesvrdevelopment/thread/a58d4400-12d5-4856-91c7-c6135035e147
+    $ewsResponse = str_replace('"&#x1;"', '""', $ewsResponse);
+        
+    return $ewsResponse;
 	}   
 
 	public function __getLastRequestHeaders() {
