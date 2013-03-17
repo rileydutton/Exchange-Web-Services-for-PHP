@@ -415,6 +415,19 @@ class ExchangeClient {
       foreach ($attachments AS $attachment) {
         if (!file_exists($attachment)) continue;
         
+        $attachmentMime = "";
+        
+        $fileExtension = pathinfo($attachment, PATHINFO_EXTENSION);
+        
+        if ($fileExtension == "xls")
+          $attachmentMime = "application/vnd.ms-excel";
+        
+        if (!strlen($attachmentMime)) {
+          $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+          $attachmentMime = finfo_file($fileInfo, $attachment);
+          finfo_close($fileInfo);
+        }
+        
         $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
         $attachmentMime = finfo_file($fileInfo, $attachment);
         finfo_close($fileInfo);
