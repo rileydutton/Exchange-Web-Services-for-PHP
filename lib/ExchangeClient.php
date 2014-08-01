@@ -236,6 +236,7 @@ class ExchangeClient {
 				continue;
 
 			$newmessage = new stdClass();
+			$newmessage->source = base64_decode($messageobj->_);
 			$newmessage->bodytext = $messageobj->Body->_;
 			$newmessage->bodytype = $messageobj->Body->BodyType;
 			$newmessage->isread = $messageobj->IsRead;
