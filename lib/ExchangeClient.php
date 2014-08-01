@@ -175,10 +175,11 @@ class ExchangeClient {
 	 * @access public
 	 * @param int $limit. (How many messages to get? default: 50)
 	 * @param bool $onlyunread. (Only get unread messages? default: false)
-	 * @param string $folder. (default: "inbox", other options include "sentitems", this must be a DistinguishedFolderId)
+	 * @param string $folder. (default: "inbox", other options include "sentitems")
+	 * @param bool $folderIdIsDistinguishedFolderId. (default: true, is $folder a DistinguishedFolderId or a simple FolderId)
 	 * @return array $messages (an array of objects representing the messages)
 	 */
-	public function get_messages($limit = 50, $onlyunread = false, $folder = "inbox") {
+	public function get_messages($limit = 50, $onlyunread = false, $folder = "inbox", $folderIdIsDistinguishedFolderId = true) {
 		$this->setup();
 		
 		$FindItem = new stdClass();
@@ -188,8 +189,14 @@ class ExchangeClient {
 		$FindItem->ItemShape->BaseShape = "IdOnly";
 
 		$FindItem->ParentFolderIds = new stdClass();
-		$FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
-		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
+		
+		if ($folderIdIsDistinguishedFolderId) {
+			$FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
+			$FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
+		} else {
+			$FindItem->ParentFolderIds->FolderId = new stdClass();
+			$FindItem->ParentFolderIds->FolderId->Id = $folder;
+    }
 
 		if($this->delegate != NULL) {
 			$FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
