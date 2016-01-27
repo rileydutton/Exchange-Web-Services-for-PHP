@@ -175,10 +175,11 @@ class ExchangeClient {
 	 * @access public
 	 * @param int $limit. (How many messages to get? default: 50)
 	 * @param bool $onlyunread. (Only get unread messages? default: false)
-	 * @param string $folder. (default: "inbox", other options include "sentitems", this must be a DistinguishedFolderId)
+	 * @param string $folder. (default: "inbox", other options include "sentitems")
+	 * @param bool $folderIdIsDistinguishedFolderId. (default: true, is $folder a DistinguishedFolderId or a simple FolderId)
 	 * @return array $messages (an array of objects representing the messages)
 	 */
-	public function get_messages($limit = 50, $onlyunread = false, $folder = "inbox") {
+	public function get_messages($limit = 50, $onlyunread = false, $folder = "inbox", $folderIdIsDistinguishedFolderId = true) {
 		$this->setup();
 		
 		$FindItem = new stdClass();
@@ -188,8 +189,14 @@ class ExchangeClient {
 		$FindItem->ItemShape->BaseShape = "IdOnly";
 
 		$FindItem->ParentFolderIds = new stdClass();
-		$FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
-		$FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
+		
+		if ($folderIdIsDistinguishedFolderId) {
+			$FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
+			$FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
+		} else {
+			$FindItem->ParentFolderIds->FolderId = new stdClass();
+			$FindItem->ParentFolderIds->FolderId->Id = $folder;
+    }
 
 		if($this->delegate != NULL) {
 			$FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
@@ -236,6 +243,7 @@ class ExchangeClient {
 				continue;
 
 			$newmessage = new stdClass();
+			$newmessage->source = base64_decode($messageobj->MimeContent->_);
 			$newmessage->bodytext = $messageobj->Body->_;
 			$newmessage->bodytype = $messageobj->Body->BodyType;
 			$newmessage->isread = $messageobj->IsRead;
@@ -271,7 +279,6 @@ class ExchangeClient {
 			$newmessage->attachments = array();
 
 			if($messageobj->HasAttachments == 1) {
-				// TODO: support ItemAttachments
 				if(property_exists($messageobj->Attachments, 'FileAttachment')) {
 					if(!is_array($messageobj->Attachments->FileAttachment)) {
 						$messageobj->Attachments->FileAttachment = array($messageobj->Attachments->FileAttachment);
@@ -317,29 +324,81 @@ class ExchangeClient {
 	 * Send a message through the Exchange server as the currently logged-in user.
 	 * 
 	 * @access public
-	 * @param string $to (the email address to send the message to)
+	 * @param mixed $to (the email address or an array of email address to send the message to)
 	 * @param string $subject
 	 * @param string $content
 	 * @param string $bodytype. (default: "Text", "HTML" for HTML emails)
 	 * @param bool $saveinsent. (Save in the user's sent folder after sending? default: true)
 	 * @param bool $markasread. (Mark as read after sending? This currently does nothing. default: true)
+   * @param array $attachments. (Array of files to attach. Each array item should be the full path to the file you want to attach)
+   * @param mixed $cc (the email address or an array of email address of recipients to receive a carbon copy (cc) of the e-mail message)
+   * @param mixed $bcc (the email address or an array of email address of recipients to receive a blind carbon copy (Bcc) of the e-mail message)
 	 * @return bool $success. (True if the message was sent, false if there was an error).
 	 */
-	public function send_message($to, $subject, $content, $bodytype = "Text", $saveinsent = true, $markasread = true) {
+	public function send_message($to, $subject, $content, $bodytype = "Text", $saveinsent = true, $markasread = true, $attachments = false, $cc = false, $bcc = false) {
 		$this->setup();
 		
-		if($saveinsent) {
-			$CreateItem->MessageDisposition = "SendOnly";
-			$CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = "sentitems";
-		} else {
-			$CreateItem->MessageDisposition = "SendOnly";
+    if ($attachments && !is_array($attachments))
+      $attachments = false;
+    
+    if ($attachments) {
+    	$CreateItem->MessageDisposition = "SaveOnly";
+      $CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = 'drafts';
+    } else {
+      if($saveinsent) {
+    		$CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = "sentitems";
+  		} else {
+  			$CreateItem->MessageDisposition = "SendOnly";
+      }
     }
-		
+    
 		$CreateItem->Items->Message->ItemClass = "IPM.Note";
 		$CreateItem->Items->Message->Subject = $subject;
 		$CreateItem->Items->Message->Body->BodyType = $bodytype;
 		$CreateItem->Items->Message->Body->_ = $content;
-		$CreateItem->Items->Message->ToRecipients->Mailbox->EmailAddress = $to;
+    
+    if (is_array($to)) {
+      $recipients = array();
+      foreach ($to as $EmailAddress) {
+        $Mailbox = new stdClass();
+        $Mailbox->EmailAddress = $EmailAddress;
+        $recipients[] = $Mailbox;
+      }
+      
+      $CreateItem->Items->Message->ToRecipients->Mailbox = $recipients;
+    } else {
+      $CreateItem->Items->Message->ToRecipients->Mailbox->EmailAddress = $to;
+    }
+    
+    if ($cc) {
+      if (is_array($cc)) {
+        $recipients = array();
+        foreach ($cc as $EmailAddress) {
+          $Mailbox = new stdClass();
+          $Mailbox->EmailAddress = $EmailAddress;
+          $recipients[] = $Mailbox;
+        }
+
+        $CreateItem->Items->Message->CcRecipients->Mailbox = $recipients;
+      } else {
+        $CreateItem->Items->Message->CcRecipients->Mailbox->EmailAddress = $cc;
+      }
+    }
+    
+    if ($bcc) {
+      if (is_array($bcc)) {
+        $recipients = array();
+        foreach ($bcc as $EmailAddress) {
+          $Mailbox = new stdClass();
+          $Mailbox->EmailAddress = $EmailAddress;
+          $recipients[] = $Mailbox;
+        }
+
+        $CreateItem->Items->Message->BccRecipients->Mailbox = $recipients;
+      } else {
+        $CreateItem->Items->Message->BccRecipients->Mailbox->EmailAddress = $bcc;
+      }
+    }
 		
 		if($markasread) {
 			$CreateItem->Items->Message->IsRead = "true";
@@ -348,17 +407,85 @@ class ExchangeClient {
 		if($this->delegate != NULL) {
 			$CreateItem->Items->Message->From->Mailbox->EmailAddress = $this->delegate;
     }
-		
-		$response = $this->client->CreateItem($CreateItem);
-		
-		$this->teardown();
-		
-		if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError") { 
-			return true;
-		} else {
+
+    $response = $this->client->CreateItem($CreateItem);
+    
+    if($response->ResponseMessages->CreateItemResponseMessage->ResponseCode != "NoError") { 
 			$this->lastError = $response->ResponseMessages->CreateItemResponseMessage->ResponseCode;
+      $this->teardown();
 			return false;
 		}
+  
+    if($attachments && $response->ResponseMessages->CreateItemResponseMessage->ResponseCode == "NoError") {
+      $itemId = $response->ResponseMessages->CreateItemResponseMessage->Items->Message->ItemId->Id;
+      $itemChangeKey = $response->ResponseMessages->CreateItemResponseMessage->Items->Message->ItemId->ChangeKey;
+
+      foreach ($attachments AS $attachment) {
+        if (!file_exists($attachment)) continue;
+        
+        $attachmentMime = "";
+        
+        $fileExtension = pathinfo($attachment, PATHINFO_EXTENSION);
+        
+        if ($fileExtension == "xls")
+          $attachmentMime = "application/vnd.ms-excel";
+        
+        if (!strlen($attachmentMime)) {
+          $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+          $attachmentMime = finfo_file($fileInfo, $attachment);
+          finfo_close($fileInfo);
+        }
+        
+        $fileInfo = finfo_open(FILEINFO_MIME_TYPE);
+        $attachmentMime = finfo_file($fileInfo, $attachment);
+        finfo_close($fileInfo);
+        
+        $filename = pathinfo($attachment, PATHINFO_BASENAME);
+        
+        $FileAttachment = new stdClass();
+        $FileAttachment->Content = file_get_contents($attachment);
+        $FileAttachment->ContentType = $attachmentMime;
+        $FileAttachment->Name = $filename;
+
+        $CreateAttachment = new stdClass();
+        $CreateAttachment->Attachments->FileAttachment = $FileAttachment;
+        $CreateAttachment->ParentItemId->Id = $itemId;
+        $CreateAttachment->ParentItemId->ChangeKey = $itemChangeKey;
+
+        $response = $this->client->CreateAttachment($CreateAttachment);
+
+        if($response->ResponseMessages->CreateAttachmentResponseMessage->ResponseCode != "NoError") { 
+          $this->lastError = $response->ResponseMessages->CreateAttachmentResponseMessage->ResponseCode;
+          return false;
+        }
+        
+        $itemId = $response->ResponseMessages->CreateAttachmentResponseMessage->Attachments->FileAttachment->AttachmentId->RootItemId;
+        $itemChangeKey = $response->ResponseMessages->CreateAttachmentResponseMessage->Attachments->FileAttachment->AttachmentId->RootItemChangeKey;
+      }
+      
+      $SendItem = new stdClass();
+      $SendItem->ItemIds->ItemId->Id = $itemId;
+      $SendItem->ItemIds->ItemId->ChangeKey = $itemChangeKey;
+      
+      if($saveinsent) {
+        $SendItem->SaveItemToFolder = true;
+    		$SendItem->SavedItemFolderId->DistinguishedFolderId->Id = "sentitems";
+  		} else {
+        $SendItem->SaveItemToFolder = false;
+      }
+      
+      $response = $this->client->SendItem($SendItem);
+
+      if($response->ResponseMessages->SendItemResponseMessage->ResponseCode != "NoError") { 
+        $this->lastError = $response->ResponseMessages->SendItemResponseMessage->ResponseCode;
+        $this->teardown();
+        return false;
+      }
+    }
+
+		$this->teardown();
+		
+    return true;
 	}
 	
 	/**
