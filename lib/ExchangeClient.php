@@ -540,6 +540,54 @@ class ExchangeClient {
       $this->lastError = $response->ResponseMessages->MoveItemResponseMessage->ResponseCode;
     }
 	}
+	
+	/**
+	 * Mark message(s) as read
+	 * 
+	 * @access public
+	 * @param array $messages (the message or an array of messages to mark as read)
+	 * @return boolean $response. (Returns true if successful and false on error).
+	 */
+	public function mark_message_as_read($messages) {
+		$this->setup();
+		
+		if(!is_array($messages)) {
+			$messages = array($messages)
+		}
+		
+		$request = new stdClass();
+		$request->MessageDisposition = 'SaveOnly';
+		$request->ConflictResolution = 'AlwaysOverwrite';
+		$request->ItemChanges = array();
+		
+		foreach($messages as $message) {
+			$change = new stdClass();
+			$change->ItemId = new stdClass();
+			$change->ItemId->Id = $message->ItemId->Id;
+			$change->ItemId->ChangeKey = $message->ItemId->ChangeKey;
+
+			$field = new stdClass();
+			$field->FieldURI = new stdClass();
+			$field->FieldURI->FieldURI = 'message:IsRead';
+			$field->Message = new stdClass();
+			$field->Message->IsReadSpecified = true;
+			$field->Message->IsRead = true;
+
+			$change->Updates->SetItemField[] = $field;
+			$request->ItemChanges[] = $change;
+		}
+
+		$response =  $this->client->UpdateItem($request);
+		$this->teardown();
+		
+		if(response->ResponseMessages->UpdateItemResponseMessage->ResponseCode == 'NoError') {
+			return true;
+		}
+		else {
+			$this->lastError = $response->ResponseMessages->UpdateItemResponseMessage->ResponseCode;
+			return false
+		}
+	}
 
 	public function getFolder($regex, $parent = 'inbox') {
 		foreach($this->get_subfolders($parent) as $folder) {
