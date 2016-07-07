@@ -552,7 +552,7 @@ class ExchangeClient {
 		$this->setup();
 		
 		if(!is_array($messages)) {
-			$messages = array($messages)
+			$messages = array($messages);
 		}
 		
 		$request = new stdClass();
@@ -585,7 +585,7 @@ class ExchangeClient {
 		}
 		else {
 			$this->lastError = $response->ResponseMessages->UpdateItemResponseMessage->ResponseCode;
-			return false
+			return false;
 		}
 	}
 
