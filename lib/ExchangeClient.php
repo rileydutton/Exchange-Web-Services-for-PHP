@@ -580,7 +580,7 @@ class ExchangeClient {
 		$response =  $this->client->UpdateItem($request);
 		$this->teardown();
 		
-		if(response->ResponseMessages->UpdateItemResponseMessage->ResponseCode == 'NoError') {
+		if($response->ResponseMessages->UpdateItemResponseMessage->ResponseCode == 'NoError') {
 			return true;
 		}
 		else {
