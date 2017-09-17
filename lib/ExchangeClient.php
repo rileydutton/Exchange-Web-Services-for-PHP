@@ -574,7 +574,7 @@ class ExchangeClient {
         $MoveItem->ItemIds = new stdClass();
 
         $MoveItem->ToFolderId->FolderId->Id = $FolderId;
-        $MoveItem->ItemIds->ItemId = $ItemId;
+        $MoveItem->ItemIds->ItemId->Id = $ItemId;
 
         $response = $this->client->MoveItem($MoveItem);
 
