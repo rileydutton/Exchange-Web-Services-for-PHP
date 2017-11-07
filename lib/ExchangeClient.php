@@ -65,11 +65,16 @@ class ExchangeClient {
     public function create_event($subject, $start, $end, $location, $isallday = false) {
         $this->setup();
 
+        $CreateItem = new stdClass();
         $CreateItem->SendMeetingInvitations = "SendToNone";
+        $CreateItem->SavedItemFolderId = new stdClass();
+        $CreateItem->SavedItemFolderId->DistinguishedFolderId = new stdClass();
         $CreateItem->SavedItemFolderId->DistinguishedFolderId->Id = "calendar";
         if($this->delegate != NULL) {
             $FindItem->SavedItemFolderId->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
         }
+        $CreateItem->Items = new stdClass();
+        $CreateItem->Items->CalendarItem = new stdClass();
         $CreateItem->Items->CalendarItem->Subject = $subject;
         $CreateItem->Items->CalendarItem->Start = $start; #e.g. "2010-09-21T16:00:00Z"; # ISO date format. Z denotes UTC time
         $CreateItem->Items->CalendarItem->End = $end;
@@ -92,14 +97,20 @@ class ExchangeClient {
     public function get_events($start, $end) {
         $this->setup();
 
+        $FindItem = new stdClass();
         $FindItem->Traversal = "Shallow";
+        $FindItem->ItemShape = new stdClass();
         $FindItem->ItemShape->BaseShape = "IdOnly";
+        $FindItem->ParentFolderIds = new stdClass();
+        $FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
         $FindItem->ParentFolderIds->DistinguishedFolderId->Id = "calendar";
 
         if($this->delegate != NULL) {
+            $FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox = new stdClass();
             $FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
         }
 
+        $FindItem->CalendarView = new stdClass();
         $FindItem->CalendarView->StartDate = $start;
         $FindItem->CalendarView->EndDate = $end;
 
@@ -122,7 +133,10 @@ class ExchangeClient {
             $items = array($items);
 
         foreach($items as $item) {
+            $GetItem = new stdClass();
+            $GetItem->ItemShape = new stdClass();;
             $GetItem->ItemShape->BaseShape = "Default";
+            $GetItem->ItemIds = new stdClass();
             $GetItem->ItemIds->ItemId = $item->ItemId;
             $response = $this->client->GetItem($GetItem);
 
@@ -133,7 +147,7 @@ class ExchangeClient {
 
             $eventobj = $response->ResponseMessages->GetItemResponseMessage->Items->CalendarItem;
 
-            $newevent = null;
+            $newevent = new stdClass();
             $newevent->id = $eventobj->ItemId->Id;
             $newevent->changekey = $eventobj->ItemId->ChangeKey;
             $newevent->subject = $eventobj->Subject;
@@ -141,21 +155,25 @@ class ExchangeClient {
             $newevent->end = strtotime($eventobj->End);
             $newevent->location = $eventobj->Location;
 
-            $organizer = null;
+            $organizer = new stdClass();
             $organizer->name = $eventobj->Organizer->Mailbox->Name;
             $organizer->email = $eventobj->Organizer->Mailbox->EmailAddress;
 
+            $required = array();
             $people = array();
-            $required = $eventobj->RequiredAttendees->Attendee;
+            if(isset($eventobj->RequiredAttendees->Attendee))
+                $required = $eventobj->RequiredAttendees->Attendee;
 
             if(!is_array($required))
                 $required = array($required);
 
             foreach($required as $r) {
-                $o = null;
-                $o->name = $r->Mailbox->Name;
-                $o->email = $r->Mailbox->EmailAddress;
-                $people[] = $o;
+                if(!empty($r->Mailbox)){
+                    $o = new stdClass();
+                    $o->name = $r->Mailbox->Name;
+                    $o->email = $r->Mailbox->EmailAddress;
+                    $people[] = $o;
+                }
             }
 
             $newevent->organizer = $organizer;
@@ -190,9 +208,9 @@ class ExchangeClient {
         $FindItem->ItemShape->BaseShape = "IdOnly";
 
         $FindItem->ParentFolderIds = new stdClass();
+        $FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
 
         if($folderIdIsDistinguishedFolderId) {
-            $FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
             $FindItem->ParentFolderIds->DistinguishedFolderId->Id = $folder;
         } else {
             $FindItem->ParentFolderIds->FolderId = new stdClass();
@@ -200,6 +218,7 @@ class ExchangeClient {
         }
 
         if($this->delegate != NULL) {
+            $FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox = new stdClass();
             $FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
         }
 
@@ -254,12 +273,14 @@ class ExchangeClient {
 
             $newmessage->to_recipients = array();
 
-            if(!is_array($messageobj->ToRecipients->Mailbox)) {
-                $messageobj->ToRecipients->Mailbox = array($messageobj->ToRecipients->Mailbox);
-            }
 
-            foreach($messageobj->ToRecipients->Mailbox as $mailbox) {
-                $newmessage->to_recipients[] = $mailbox;
+            if(isset($messageobj->ToRecipients->Mailbox)) {
+                if(!is_array($messageobj->ToRecipients->Mailbox)) {
+                    $messageobj->ToRecipients->Mailbox = array($messageobj->ToRecipients->Mailbox);
+                }
+                foreach($messageobj->ToRecipients->Mailbox as $mailbox) {
+                    $newmessage->to_recipients[] = $mailbox;
+                }
             }
 
             $newmessage->cc_recipients = array();
@@ -543,7 +564,9 @@ class ExchangeClient {
     public function delete_message($ItemId, $deletetype = "HardDelete") {
         $this->setup();
 
+        $DeleteItem = new stdClass();
         $DeleteItem->DeleteType = $deletetype;
+        $DeleteItem->ItemIds = new stdClass();
         $DeleteItem->ItemIds->ItemId = $ItemId;
 
         $response = $this->client->DeleteItem($DeleteItem);
