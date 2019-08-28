@@ -91,15 +91,18 @@ class ExchangeClient {
 
     public function get_events($start, $end) {
         $this->setup();
-
+        $FindItem = new stdClass();
         $FindItem->Traversal = "Shallow";
+        $FindItem->ItemShape = new stdClass();
         $FindItem->ItemShape->BaseShape = "IdOnly";
+        $FindItem->ParentFolderIds = new stdClass();
+        $FindItem->ParentFolderIds->DistinguishedFolderId = new stdClass();
         $FindItem->ParentFolderIds->DistinguishedFolderId->Id = "calendar";
 
         if($this->delegate != NULL) {
             $FindItem->ParentFolderIds->DistinguishedFolderId->Mailbox->EmailAddress = $this->delegate;
         }
-
+        $FindItem->CalendarView = new stdClass();
         $FindItem->CalendarView->StartDate = $start;
         $FindItem->CalendarView->EndDate = $end;
 
@@ -122,7 +125,10 @@ class ExchangeClient {
             $items = array($items);
 
         foreach($items as $item) {
+            $GetItem = new stdClass();
+            $GetItem->ItemShape = new stdClass();
             $GetItem->ItemShape->BaseShape = "Default";
+            $GetItem->ItemIds = new stdClass();
             $GetItem->ItemIds->ItemId = $item->ItemId;
             $response = $this->client->GetItem($GetItem);
 
@@ -133,7 +139,7 @@ class ExchangeClient {
 
             $eventobj = $response->ResponseMessages->GetItemResponseMessage->Items->CalendarItem;
 
-            $newevent = null;
+            $newevent = new stdClass();
             $newevent->id = $eventobj->ItemId->Id;
             $newevent->changekey = $eventobj->ItemId->ChangeKey;
             $newevent->subject = $eventobj->Subject;
@@ -141,7 +147,7 @@ class ExchangeClient {
             $newevent->end = strtotime($eventobj->End);
             $newevent->location = $eventobj->Location;
 
-            $organizer = null;
+            $organizer = new stdClass();
             $organizer->name = $eventobj->Organizer->Mailbox->Name;
             $organizer->email = $eventobj->Organizer->Mailbox->EmailAddress;
 
@@ -152,7 +158,7 @@ class ExchangeClient {
                 $required = array($required);
 
             foreach($required as $r) {
-                $o = null;
+                $o = new stdClass();
                 $o->name = $r->Mailbox->Name;
                 $o->email = $r->Mailbox->EmailAddress;
                 $people[] = $o;
