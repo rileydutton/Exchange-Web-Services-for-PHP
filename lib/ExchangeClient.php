@@ -118,11 +118,11 @@ class ExchangeClient {
         $i = 0;
         $events = array();
 
-        if(count($items) == 0)
-            return false; //we didn't get anything back!
-
         if(!is_array($items)) //if we only returned one event, then it doesn't send it as an array, just as a single object. so put it into an array so that everything works as expected.
             $items = array($items);
+
+        if(count($items) == 0)
+            return false; //we didn't get anything back!       
 
         foreach($items as $item) {
             $GetItem = new stdClass();
