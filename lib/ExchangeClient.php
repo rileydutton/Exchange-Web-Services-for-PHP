@@ -91,6 +91,8 @@ class ExchangeClient {
 
     public function get_events($start, $end) {
         $this->setup();
+        $items = 0;
+        $required = 0;
         $FindItem = new stdClass();
         $FindItem->Traversal = "Shallow";
         $FindItem->ItemShape = new stdClass();
@@ -113,16 +115,21 @@ class ExchangeClient {
             return false;
         }
 
-        $items = $response->ResponseMessages->FindItemResponseMessage->RootFolder->Items->CalendarItem;
+        if (isset($response->ResponseMessages->FindItemResponseMessage->RootFolder->Items->CalendarItem)) {
+            $items = $response->ResponseMessages->FindItemResponseMessage->RootFolder->Items->CalendarItem;
+        }
 
         $i = 0;
         $events = array();
 
-        if(!is_array($items)) //if we only returned one event, then it doesn't send it as an array, just as a single object. so put it into an array so that everything works as expected.
+        if(!is_array($items)) { //if we only returned one event, then it doesn't send it as an array, just as a single object. so put it into an array so that everything works as expected.
             $items = array($items);
+            if(empty($items[0])) { // If this element is empty, there are 0 events
+                return false; //we didn't get anything back!
+            }
+        }
 
-        if(count($items) == 0)
-            return false; //we didn't get anything back!       
+    
 
         foreach($items as $item) {
             $GetItem = new stdClass();
@@ -140,29 +147,38 @@ class ExchangeClient {
             $eventobj = $response->ResponseMessages->GetItemResponseMessage->Items->CalendarItem;
 
             $newevent = new stdClass();
+
             $newevent->id = $eventobj->ItemId->Id;
             $newevent->changekey = $eventobj->ItemId->ChangeKey;
             $newevent->subject = $eventobj->Subject;
             $newevent->start = strtotime($eventobj->Start);
             $newevent->end = strtotime($eventobj->End);
-            $newevent->location = $eventobj->Location;
-
+            if(isset($eventobj->Location)) {
+                $newevent->location = $eventobj->Location; // Sometimes there is no Location
+            }
+           
             $organizer = new stdClass();
             $organizer->name = $eventobj->Organizer->Mailbox->Name;
             $organizer->email = $eventobj->Organizer->Mailbox->EmailAddress;
 
             $people = array();
-            $required = $eventobj->RequiredAttendees->Attendee;
+            if(isset($eventobj->RequiredAttendees->Attendee)) {
+                $required = $eventobj->RequiredAttendees->Attendee; // Sometimes there are no attendees
+            }
+            
 
             if(!is_array($required))
                 $required = array($required);
 
-            foreach($required as $r) {
-                $o = new stdClass();
-                $o->name = $r->Mailbox->Name;
-                $o->email = $r->Mailbox->EmailAddress;
-                $people[] = $o;
+            if (!empty($required[0])) {
+                foreach($required as $r) {
+                    $o = new stdClass();
+                    $o->name = $r->Mailbox->Name;
+                    $o->email = $r->Mailbox->EmailAddress;
+                    $people[] = $o;
+                }
             }
+
 
             $newevent->organizer = $organizer;
             $newevent->people = $people;
@@ -739,3 +755,4 @@ class ImpersonationHeader {
     }
 
 }
+?
